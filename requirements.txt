@@ -1,0 +1,5 @@
+playwright>=1.45.0
+flask>=3.0.0
+openai>=1.40.0
+# For building the .exe (only needed when running build.bat):
+pyinstaller>=6.0

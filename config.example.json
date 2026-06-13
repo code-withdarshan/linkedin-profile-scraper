@@ -1,0 +1,11 @@
+{
+  "email": "your_email@example.com",
+  "password": "your_password",
+  "search_url": "https://www.linkedin.com/search/results/people/?keywords=software%20engineer&origin=GLOBAL_SEARCH_HEADER",
+  "output_csv": "profiles.csv",
+  "max_pages": 5,
+  "headless": false,
+  "min_delay_seconds": 5.0,
+  "max_delay_seconds": 12.0,
+  "user_data_dir": ".linkedin_session"
+}

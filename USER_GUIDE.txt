@@ -1,0 +1,95 @@
+===========================================
+   LinkedIn Profile Scraper - User Guide
+===========================================
+
+WHAT THIS DOES
+--------------
+Walks through a LinkedIn People-search result list and saves all the
+profile URLs to a CSV file you can open in Excel.
+
+
+REQUIREMENT
+-----------
+You need Google Chrome installed on your PC.
+If you don't have it: https://www.google.com/chrome/
+
+
+HOW TO RUN
+----------
+1. Double-click LinkedInScraper.exe
+
+2. A black console window appears showing the app's web address.
+
+3. Your default browser opens automatically to the app.
+   If it doesn't, copy the URL shown in the console (something like
+   http://127.0.0.1:5000) and paste it into your browser.
+
+4. SIGN IN:
+   - In the top card, enter your LinkedIn email and password
+   - Click Save
+   - These are stored locally on your PC only - never sent anywhere
+     except linkedin.com itself.
+
+5. BUILD A SEARCH ON LINKEDIN:
+   - Go to linkedin.com in another tab
+   - Click the search bar -> People
+   - Click "All filters" on the right
+   - Tick whatever you want: location, industry, company, seniority,
+     school, verifications, etc.
+   - Click "Show results"
+   - COPY THE URL from your browser's address bar
+
+6. PASTE THE URL into the app's "LinkedIn People-Search URL" field
+
+7. (Optional) Tick "Only verified accounts" to keep only profiles with
+   LinkedIn's blue checkmark
+
+8. Click "Start Scraping"
+
+9. A new Chrome browser window opens (your own installed Chrome).
+   The app logs into LinkedIn in that window.
+   - If LinkedIn asks for a captcha or verification code: SOLVE IT
+     in that Chrome window. The app waits up to 5 minutes.
+
+10. Wait for it to finish. The progress bar shows page X of Y.
+
+11. Click "Download CSV" when it's done.
+
+
+THINGS TO KNOW
+--------------
+* Scrapes can take 20-40 minutes for a full 100-page result list.
+  This is intentional - going faster gets your LinkedIn account flagged.
+
+* LinkedIn limits free accounts to a small number of people-searches
+  per month. If the scrape stops at 6-8 results, you've hit that cap.
+  Wait until next month, or use a LinkedIn Premium account.
+
+* DO NOT close the black console window while scraping. Closing it
+  stops the app.
+
+* All your data (saved CSVs, your login, the Chromium browser) is
+  stored at:
+     C:\Users\YOURNAME\AppData\Local\LinkedInScraper\
+
+
+TROUBLESHOOTING
+---------------
+"Windows protected your PC" on first launch:
+  Click "More info" -> "Run anyway". This appears because the .exe
+  is not code-signed (would cost $200/year). It's safe.
+
+Browser doesn't open automatically:
+  Copy the URL from the console window into your browser manually.
+
+"Address already in use":
+  Close any other copy of this app that's already running.
+
+Scrape returns 0 results:
+  - Make sure the URL is a "People" search URL, not Jobs/Posts/etc.
+  - Try a less restrictive filter to confirm the app is working.
+
+Login fails:
+  - Double-check email and password in the app's top card.
+  - LinkedIn sometimes asks for a verification code by SMS or email.
+    Watch the Chromium window and complete the challenge there.

@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LinkedIn Profile Scraper</title>
+<style>
+  :root { --bg:#0e1320; --card:#171c2c; --accent:#0a66c2; --text:#e6e9ef; --muted:#8a93a6; --ok:#22c55e; --err:#ef4444; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px; }
+  h1 { margin: 0 0 6px; font-size: 26px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border-radius: 12px; padding: 22px; margin-bottom: 18px; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  label { display:block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a324a;
+    background: #0e1320; color: var(--text); font-size: 14px;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+  input[type=text], input[type=password], input[type=number] {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a324a;
+    background: #0e1320; color: var(--text); font-size: 14px;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  button {
+    background: var(--accent); color: white; border: 0; padding: 12px 20px;
+    border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 18px;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.secondary { background: #2a324a; }
+  .status { padding: 12px 14px; border-radius: 8px; margin-top: 14px; display: none; font-size: 14px; }
+  .status.running { background: #1f2a44; color: #c9d3ea; display: block; }
+  .status.done { background: rgba(34,197,94,.12); color: var(--ok); display: block; }
+  .status.error { background: rgba(239,68,68,.12); color: var(--err); display: block; }
+  .progress-bar { height: 6px; background: #232a40; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; width: 0%; }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  ul.results { list-style: none; padding: 0; margin: 12px 0 0; max-height: 380px; overflow:auto; }
+  ul.results li { padding: 8px 10px; border-bottom: 1px solid #232a40; font-size: 13px; word-break: break-all; }
+  ul.results li a { color: #6aa4e9; text-decoration: none; }
+  ul.results li a:hover { text-decoration: underline; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  table.history { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  table.history th, table.history td { padding: 9px 8px; border-bottom: 1px solid #232a40; text-align: left; }
+  table.history th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.history td.actions { white-space: nowrap; text-align: right; }
+  table.history button { padding: 5px 10px; font-size: 12px; margin: 0 0 0 4px; }
+  .badge { display:inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge.done { background: rgba(34,197,94,.15); color: var(--ok); }
+  .badge.running { background: rgba(10,102,194,.18); color: #6aa4e9; }
+  .badge.error { background: rgba(239,68,68,.15); color: var(--err); }
+  .label-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .url-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+              font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #9ab4d9; }
+  .url-cell a { color: #9ab4d9; text-decoration: none; }
+  .url-cell a:hover { text-decoration: underline; }
+  .when-cell { white-space: nowrap; }
+  .when-cell .sub { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LinkedIn Profile Scraper</h1>
+  <p class="lead">Paste a pre-filtered LinkedIn search URL. The scraper auto-detects how many pages of results there are and walks all of them.</p>
+
+  <div class="card" id="credsCard">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h3 style="margin:0; font-size:16px;">LinkedIn account</h3>
+        <div class="hint" id="credsStatus" style="margin-top:4px;">Loading...</div>
+      </div>
+      <button class="secondary" onclick="toggleCreds()" id="credsToggle" style="margin:0;">Change</button>
+    </div>
+    <div id="credsForm" style="display:none; margin-top:14px;">
+      <label>Email</label>
+      <input type="text" id="credEmail" placeholder="you@example.com">
+      <label>Password</label>
+      <input type="password" id="credPassword" placeholder="LinkedIn password">
+      <div class="hint">Stored locally in <code>config.json</code> in this app's data folder. Never sent anywhere except linkedin.com.</div>
+      <button onclick="saveCreds()">Save</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Chrome Profile</label>
+    <select id="chromeProfile" onchange="onProfileChange()">
+      <option value="">Dedicated profile (sign in with email/password below)</option>
+    </select>
+    <div class="hint" id="profileHint">
+      Pick one of your existing Chrome profiles to reuse its LinkedIn login —
+      no password needed. Your real Chrome stays open; we copy the cookies
+      into a separate window so the two don't conflict.
+    </div>
+
+    <label>LinkedIn People-Search URL</label>
+    <input type="text" id="raw_url" placeholder="https://www.linkedin.com/search/results/people/?keywords=...">
+    <div class="hint">
+      1. Open <b>linkedin.com</b> &rarr; People search &rarr; click <b>All filters</b>.<br>
+      2. Set any filters you want (industry, company, location, seniority, school, verifications, etc.).<br>
+      3. Hit "Show results", then copy the URL from your browser's address bar and paste it above.
+    </div>
+
+    <label style="margin-top:18px;">Max Pages</label>
+    <input type="number" id="max_pages" value="15" min="1" max="100" style="max-width:140px;">
+    <div class="hint">Scrape stops after this many result pages (10 profiles per page). 1-100.</div>
+
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer;">
+      <input type="checkbox" id="verified_only" style="width:auto;">
+      <span style="color: var(--text); font-size: 14px;">Only verified accounts (blue checkmark)</span>
+    </label>
+
+    <label style="margin-top:14px;">Verify Role with AI <span style="color:var(--muted); font-weight:400;">(optional)</span></label>
+    <input type="text" id="target_role" placeholder="e.g. Business Development Executive">
+    <div class="hint" id="aiHint">
+      After scraping, each profile will be checked against this role and tagged
+      yes/maybe/no. Requires AI Settings to be configured below.
+    </div>
+
+    <label style="margin-top:14px;">Label / Name (optional)</label>
+    <input type="text" id="label" placeholder="e.g. React Devs Mumbai">
+    <div class="hint">Used to name the CSV file and identify the run in History. The current date and time are appended automatically.</div>
+
+    <div style="display:flex; gap:10px;">
+      <button id="startBtn" onclick="startScrape()">Start Scraping</button>
+      <button id="downloadBtn" class="secondary" onclick="window.location='/download'" style="display:none;">Download CSV</button>
+    </div>
+
+    <div id="status" class="status"></div>
+    <div id="progressBox" style="display:none;">
+      <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+      <div class="progress-meta">
+        <span id="progressLabel">Page 0 of ?</span>
+        <span id="progressCount">0 profiles</span>
+      </div>
+    </div>
+    <ul id="results" class="results"></ul>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="margin:0; font-size:16px;">History</h3>
+      <button class="secondary" onclick="loadHistory()" style="margin:0;">Refresh</button>
+    </div>
+    <div id="historyBody"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div class="card" id="aiSettingsCard">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h3 style="margin:0; font-size:16px;">AI Settings (NVIDIA Build / OpenAI compatible)</h3>
+        <div class="hint" id="aiStatus" style="margin-top:4px;">Loading...</div>
+      </div>
+      <button class="secondary" onclick="toggleAiForm()" id="aiToggle" style="margin:0;">Configure</button>
+    </div>
+    <div id="aiForm" style="display:none; margin-top:14px;">
+      <label>API Base URL</label>
+      <input type="text" id="aiBaseUrl" placeholder="https://integrate.api.nvidia.com/v1">
+      <label>API Key</label>
+      <input type="password" id="aiApiKey" placeholder="nvapi-... or sk-...">
+      <label>Model</label>
+      <input type="text" id="aiModel" placeholder="meta/llama-3.1-8b-instruct">
+      <div class="hint" id="aiModelSuggestions" style="margin-bottom:8px;"></div>
+      <div style="display:flex; gap:10px;">
+        <button onclick="saveAi()">Save</button>
+        <button class="secondary" onclick="testAi()">Test connection</button>
+      </div>
+      <div id="aiTestResult" class="hint" style="margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let pollTimer = null;
+
+async function loadCreds() {
+  const res = await fetch('/credentials');
+  const data = await res.json();
+  const statusEl = document.getElementById('credsStatus');
+  const formEl = document.getElementById('credsForm');
+  if (data.configured) {
+    statusEl.textContent = 'Signed in as ' + data.email;
+    formEl.style.display = 'none';
+    document.getElementById('credsToggle').textContent = 'Change';
+  } else {
+    statusEl.textContent = 'No credentials yet — enter your LinkedIn login to begin.';
+    formEl.style.display = 'block';
+    document.getElementById('credsToggle').style.display = 'none';
+  }
+}
+
+function toggleCreds() {
+  const form = document.getElementById('credsForm');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveCreds() {
+  const email = document.getElementById('credEmail').value.trim();
+  const password = document.getElementById('credPassword').value;
+  if (!email || !password) { alert('Email and password required.'); return; }
+  const res = await fetch('/credentials', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email, password}),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('credPassword').value = '';
+    document.getElementById('credsToggle').style.display = 'inline-block';
+    await loadCreds();
+  } else {
+    alert(data.error || 'Failed to save.');
+  }
+}
+
+async function loadChromeProfiles() {
+  try {
+    const res = await fetch('/chrome-profiles');
+    const data = await res.json();
+    const sel = document.getElementById('chromeProfile');
+    if (data.ok && data.profiles.length) {
+      for (const p of data.profiles) {
+        const opt = document.createElement('option');
+        opt.value = p.dir;
+        const userSuffix = p.user ? ` (${p.user})` : '';
+        opt.textContent = `${p.name}${userSuffix} — ${p.dir}`;
+        sel.appendChild(opt);
+      }
+    }
+  } catch { /* fine — dropdown just stays at the default option */ }
+}
+
+function onProfileChange() {
+  const sel = document.getElementById('chromeProfile');
+  const credsCard = document.getElementById('credsCard');
+  const hint = document.getElementById('profileHint');
+  if (sel.value) {
+    credsCard.style.opacity = '0.45';
+    hint.innerHTML = 'Selected profile&apos;s LinkedIn cookies will be copied into a ' +
+                     'separate scraping window. Your real Chrome stays open — nothing ' +
+                     'to close.';
+  } else {
+    credsCard.style.opacity = '1';
+    hint.innerHTML = 'Pick one of your existing Chrome profiles to reuse its LinkedIn login — ' +
+                     'no password needed. Your real Chrome stays open.';
+  }
+}
+
+// -------- AI Settings --------
+
+async function loadAiSettings() {
+  const res = await fetch('/ai-settings');
+  const data = await res.json();
+  const status = document.getElementById('aiStatus');
+  const hint = document.getElementById('aiHint');
+  document.getElementById('aiBaseUrl').value = data.base_url || data.default_base_url || '';
+  document.getElementById('aiModel').value = data.model || data.default_model || '';
+  document.getElementById('aiModelSuggestions').innerHTML =
+    'Suggested: ' + (data.suggested_models || []).map(m => `<code>${m}</code>`).join(', ');
+  if (data.configured) {
+    status.innerHTML = `<span style="color:var(--ok);">&#10003; Configured</span> ` +
+                       `&middot; model: <code>${escapeHtml(data.model)}</code>`;
+    if (hint) hint.innerHTML = 'After scraping, each profile will be checked against this role ' +
+                               'and tagged yes/maybe/no.';
+  } else {
+    status.innerHTML = '<span style="color:#ffb84d;">Not configured</span> &middot; ' +
+                       'add a key below to enable AI verification.';
+    if (hint) hint.innerHTML = '<span style="color:#ffb84d;">AI Settings not configured. ' +
+                                'Configure them below to use this feature.</span>';
+  }
+}
+
+function toggleAiForm() {
+  const form = document.getElementById('aiForm');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveAi() {
+  const payload = {
+    api_key: document.getElementById('aiApiKey').value.trim(),
+    base_url: document.getElementById('aiBaseUrl').value.trim(),
+    model: document.getElementById('aiModel').value.trim(),
+  };
+  if (!payload.api_key) { alert('API key is required.'); return; }
+  const res = await fetch('/ai-settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('aiApiKey').value = '';
+    document.getElementById('aiTestResult').textContent = 'Saved.';
+    await loadAiSettings();
+  } else {
+    alert(data.error || 'Failed to save.');
+  }
+}
+
+async function testAi() {
+  const out = document.getElementById('aiTestResult');
+  out.textContent = 'Testing...';
+  try {
+    const res = await fetch('/ai-test', {method: 'POST'});
+    const data = await res.json();
+    out.innerHTML = data.ok
+      ? '<span style="color:var(--ok);">&#10003; ' + escapeHtml(data.message) + '</span>'
+      : '<span style="color:var(--err);">&#10007; ' + escapeHtml(data.message || data.error || 'Failed') + '</span>';
+  } catch (e) {
+    out.textContent = 'Network error: ' + e;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadCreds(); loadChromeProfiles(); loadHistory(); loadAiSettings();
+});
+
+// -------- History --------
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})
+         + ' ' + d.toLocaleTimeString(undefined, {hour: 'numeric', minute: '2-digit'});
+  } catch { return iso; }
+}
+
+function fmtDuration(startIso, endIso) {
+  if (!startIso || !endIso) return '';
+  try {
+    const ms = new Date(endIso) - new Date(startIso);
+    if (ms < 0) return '';
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    if (m < 1) return s + 's';
+    if (m < 60) return m + 'm ' + s + 's';
+    return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  } catch { return ''; }
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
+async function loadHistory() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const res = await fetch('/history');
+    const data = await res.json();
+    if (!data.ok || !data.runs.length) {
+      body.innerHTML = '<div class="empty">No scrapes yet. Run one above and it will appear here.</div>';
+      return;
+    }
+    const rows = data.runs.map(r => {
+      const status = (r.status || '').toLowerCase();
+      const badge = `<span class="badge ${status}">${status}</span>`;
+      const labelText = r.label
+          ? escapeHtml(r.label)
+          : '<span style="color:var(--muted);">(no name)</span>';
+      const verified = r.verified_only ? ' • verified only' : '';
+      const dur = fmtDuration(r.started_at, r.finished_at);
+      const finishedSub = r.finished_at
+          ? `<span class="sub">finished ${fmtDate(r.finished_at)}${dur ? ' • ' + dur : ''}</span>`
+          : '<span class="sub" style="color:var(--err);">not finished</span>';
+      const safeUrl = escapeHtml(r.search_url || '');
+      return `
+        <tr>
+          <td class="when-cell">
+            ${fmtDate(r.started_at)}
+            ${finishedSub}
+          </td>
+          <td class="label-cell" title="${escapeHtml(r.label || '')}">${labelText}</td>
+          <td class="url-cell" title="${safeUrl}">
+            <a href="${safeUrl}" target="_blank" rel="noopener">${safeUrl}</a>
+          </td>
+          <td>${badge}</td>
+          <td>${r.profile_count}${r.total_pages ? ' / ' + r.total_pages + 'p' : ''}${verified}
+              ${r.target_role
+                ? `<div style="font-size:11px; color:var(--muted); margin-top:3px;">
+                     AI: <span style="color:var(--ok);">${r.ai_yes||0}&#10003;</span>
+                     / <span style="color:#6aa4e9;">${r.ai_maybe||0}?</span>
+                     / <span style="color:var(--err);">${r.ai_no||0}&#10007;</span>
+                     ${escapeHtml(r.target_role)}
+                   </div>` : ''}
+          </td>
+          <td class="actions">
+            <button onclick="viewRun(${r.id})">View</button>
+            <button onclick="window.location='/history/${r.id}/download'">CSV</button>
+            <button onclick="reuseRun(${r.id})" title="Paste this URL back into the form">Reuse</button>
+            <button onclick="copyUrl('${safeUrl.replace(/'/g, "\\'")}')" title="Copy search URL">Copy URL</button>
+            <button onclick="deleteRun(${r.id})" style="background:#5a2a36;">Delete</button>
+          </td>
+        </tr>`;
+    }).join('');
+    body.innerHTML = `
+      <table class="history">
+        <thead><tr>
+          <th>Date / Time</th>
+          <th>Label</th>
+          <th>Search URL</th>
+          <th>Status</th>
+          <th>Count</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch (e) {
+    body.innerHTML = '<div class="empty">Failed to load history.</div>';
+  }
+}
+
+async function viewRun(id) {
+  const res = await fetch('/history/' + id);
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || 'Failed'); return; }
+  renderResults(data.profiles);
+  const run = data.run || {};
+  const labelStr = run.label ? `"${run.label}" • ` : '';
+  const roleStr = run.target_role ? ` • role: ${run.target_role}` : '';
+  setStatus('done',
+    `Loaded run #${id} • ${labelStr}${fmtDate(run.started_at)} • ${data.profiles.length} profiles${roleStr}.`);
+  document.getElementById('downloadBtn').style.display = 'none';
+  document.getElementById('results').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+async function reuseRun(id) {
+  const res = await fetch('/history/' + id);
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || 'Failed'); return; }
+  const run = data.run || {};
+  document.getElementById('raw_url').value = run.search_url || '';
+  document.getElementById('verified_only').checked = !!run.verified_only;
+  if (run.label) document.getElementById('label').value = run.label + ' (rerun)';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function copyUrl(url) {
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(
+    () => { /* silent success */ },
+    () => { alert('Copy failed — your browser may block clipboard access.'); }
+  );
+}
+
+async function deleteRun(id) {
+  if (!confirm('Delete this run from history? The CSV file will also be removed.')) return;
+  const res = await fetch('/history/' + id, {method: 'DELETE'});
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || 'Failed to delete.'); return; }
+  loadHistory();
+}
+
+async function startScrape() {
+  const payload = {
+    raw_url: document.getElementById('raw_url').value,
+    label: document.getElementById('label').value,
+    verified_only: document.getElementById('verified_only').checked,
+    chrome_profile: document.getElementById('chromeProfile').value,
+    target_role: document.getElementById('target_role').value,
+    max_pages: parseInt(document.getElementById('max_pages').value, 10) || 15,
+  };
+
+  if (!payload.raw_url.trim()) {
+    setStatus('error', 'Please paste a LinkedIn people-search URL first.');
+    return;
+  }
+
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('downloadBtn').style.display = 'none';
+  document.getElementById('progressBox').style.display = 'block';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressLabel').textContent = 'Detecting pages...';
+  document.getElementById('progressCount').textContent = '0 profiles';
+  setStatus('running', 'Launching Chromium and logging in... (solve any login challenge in the browser window)');
+  document.getElementById('startBtn').disabled = true;
+
+  const res = await fetch('/scrape', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    setStatus('error', data.error || 'Failed to start');
+    document.getElementById('startBtn').disabled = false;
+    return;
+  }
+  pollTimer = setInterval(pollStatus, 1500);
+}
+
+async function pollStatus() {
+  const res = await fetch('/status');
+  const s = await res.json();
+  const pageNum = s.current_page || 0;
+  const total = s.total_pages;
+  const count = s.count || 0;
+
+  if (s.status === 'running') {
+    if (total) {
+      const pct = Math.min(100, Math.round((pageNum / total) * 100));
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressLabel').textContent = `Page ${pageNum} of ${total}`;
+    } else if (pageNum > 0) {
+      document.getElementById('progressLabel').textContent = `Page ${pageNum} (counting...)`;
+    } else {
+      document.getElementById('progressLabel').textContent = 'Waiting for sign-in...';
+    }
+    document.getElementById('progressCount').textContent = `${count} profiles`;
+    if (s.status_text && s.status_text.startsWith('AI')) {
+      setStatus('running', s.status_text);
+    } else if (pageNum === 0) {
+      setStatus('running',
+        'Chrome is open — please sign in to LinkedIn in that window. ' +
+        'The scraper will wait up to 30 minutes. Do NOT close the Chrome window.');
+    } else {
+      setStatus('running', total
+        ? `Scraping page ${pageNum} of ${total}...`
+        : `Scraping page ${pageNum} (counting total pages)...`);
+    }
+  } else if (s.status === 'done') {
+    clearInterval(pollTimer);
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressLabel').textContent =
+      total ? `Page ${total} of ${total}` : `Page ${pageNum}`;
+    document.getElementById('progressCount').textContent = `${s.urls.length} profiles`;
+    setStatus('done', `Done. Collected ${s.urls.length} profile URLs across ${pageNum} pages.`);
+    renderResults(s.profiles && s.profiles.length ? s.profiles : s.urls);
+    document.getElementById('downloadBtn').style.display = 'inline-block';
+    document.getElementById('startBtn').disabled = false;
+    loadHistory();
+  } else if (s.status === 'error') {
+    clearInterval(pollTimer);
+    setStatus('error', 'Error: ' + (s.error || 'unknown'));
+    document.getElementById('startBtn').disabled = false;
+    loadHistory();
+  }
+}
+
+function setStatus(kind, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + kind;
+  el.textContent = msg;
+}
+
+function tagPills(items, color) {
+  if (!items || !items.length) return '';
+  return items.map(t =>
+    `<span style="display:inline-block; background:${color}; color:#fff; font-size:10px;
+            padding:2px 7px; border-radius:8px; margin-right:4px; margin-top:2px;">
+       ${escapeHtml(t)}
+     </span>`
+  ).join('');
+}
+
+function renderResults(items) {
+  // Accept either array of URL strings or array of profile dicts.
+  const ul = document.getElementById('results');
+  ul.innerHTML = '';
+  items.forEach(item => {
+    const li = document.createElement('li');
+    if (typeof item === 'string') {
+      li.innerHTML = `<a href="${item}" target="_blank">${escapeHtml(item)}</a>`;
+      ul.appendChild(li);
+      return;
+    }
+    const u = item.url || '';
+    const name = item.name || '';
+    const headline = item.headline || '';
+    const location = item.location || '';
+    const aiMatch = (item.ai_match || '').toLowerCase();
+    const aiConf = item.ai_confidence;
+    const aiReason = item.ai_reason || '';
+    const seniority = item.ai_seniority || '';
+    const currently = (item.ai_currently_in_role || '').toLowerCase();
+    const redFlags = Array.isArray(item.ai_red_flags) ? item.ai_red_flags : [];
+    const signals  = Array.isArray(item.ai_signals)   ? item.ai_signals   : [];
+
+    const verified = item.verified
+      ? ' <span style="color:#6aa4e9;" title="Verified account">&#10004;</span>' : '';
+    const matchBadge = aiMatch
+      ? `<span class="badge ${aiMatch === 'yes' ? 'done' : aiMatch === 'no' ? 'error' : 'running'}"
+             title="${escapeHtml(aiReason)}">
+           ${aiMatch}${aiConf != null ? ' ' + aiConf : ''}
+         </span>` : '';
+    const senBadge = seniority && seniority !== 'unknown'
+      ? `<span class="badge" style="background:#2a324a; color:var(--text);">${escapeHtml(seniority)}</span>` : '';
+    const currBadge = currently && currently !== 'unknown'
+      ? `<span class="badge" style="background:${currently === 'yes' ? '#0a4d1d' : currently === 'no' ? '#4d1d1d' : '#3a3a18'};
+            color:#cfe9d6;">${currently === 'yes' ? 'in role' : currently === 'no' ? 'ex-role' : 'maybe in role'}</span>`
+      : '';
+
+    li.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+            <b>${escapeHtml(name)}</b>${verified}
+            ${matchBadge} ${senBadge} ${currBadge}
+          </div>
+          <div style="color:var(--muted); font-size:12px; margin-top:2px;">
+            ${escapeHtml(headline)}${location ? ' &middot; ' + escapeHtml(location) : ''}
+          </div>
+          ${signals.length ? `<div style="margin-top:4px;">${tagPills(signals, '#0a4d3d')}</div>` : ''}
+          ${redFlags.length ? `<div style="margin-top:3px;">${tagPills(redFlags, '#5a2a36')}</div>` : ''}
+          <div style="margin-top:4px;">
+            <a href="${u}" target="_blank" style="font-size:11px;">${escapeHtml(u)}</a>
+          </div>
+          ${aiReason ? `<div style="color:var(--muted); font-size:11px; margin-top:3px; font-style:italic;">AI: ${escapeHtml(aiReason)}</div>` : ''}
+        </div>
+      </div>`;
+    ul.appendChild(li);
+  });
+}
+</script>
+</body>
+</html>
